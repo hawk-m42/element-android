@@ -166,10 +166,11 @@ internal class DefaultCreateRoomFromLocalRoomTask @Inject constructor(
      * Create a Tombstone event to indicate that the local room has been replaced by a new one.
      */
     private suspend fun createTombstoneEvent(params: CreateRoomFromLocalRoomTask.Params, roomId: String) {
+        val now = clock.epochMillis()
         val event = Event(
                 type = EventType.STATE_ROOM_TOMBSTONE,
                 senderId = userId,
-                originServerTs = clock.epochMillis(),
+                originServerTs = now,
                 stateKey = "",
                 eventId = UUID.randomUUID().toString(),
                 content = RoomTombstoneContent(
@@ -177,7 +178,7 @@ internal class DefaultCreateRoomFromLocalRoomTask @Inject constructor(
                 ).toContent()
         )
         monarchy.awaitTransaction { realm ->
-            val eventEntity = event.toEntity(params.localRoomId, SendState.SYNCED, null).copyToRealmOrIgnore(realm, EventInsertType.INCREMENTAL_SYNC)
+            val eventEntity = event.toEntity(params.localRoomId, SendState.SYNCED, now).copyToRealmOrIgnore(realm, EventInsertType.INCREMENTAL_SYNC)
             if (event.stateKey != null && event.type != null && event.eventId != null) {
                 CurrentStateEventEntity.getOrCreate(realm, params.localRoomId, event.stateKey, event.type).apply {
                     eventId = event.eventId
