@@ -49,6 +49,8 @@ import org.matrix.android.sdk.internal.session.room.create.CreateRoomTask
 import org.matrix.android.sdk.internal.session.room.create.DefaultCreateLocalRoomTask
 import org.matrix.android.sdk.internal.session.room.create.DefaultCreateRoomFromLocalRoomTask
 import org.matrix.android.sdk.internal.session.room.create.DefaultCreateRoomTask
+import org.matrix.android.sdk.internal.session.room.create.DefaultGetCreateRoomParamsFromLocalRoomTask
+import org.matrix.android.sdk.internal.session.room.create.GetCreateRoomParamsFromLocalRoomTask
 import org.matrix.android.sdk.internal.session.room.delete.DefaultDeleteLocalRoomTask
 import org.matrix.android.sdk.internal.session.room.delete.DeleteLocalRoomTask
 import org.matrix.android.sdk.internal.session.room.directory.DefaultGetPublicRoomTask
@@ -349,4 +351,7 @@ internal abstract class RoomModule {
 
     @Binds
     abstract fun bindRedactLiveLocationShareTask(task: DefaultRedactLiveLocationShareTask): RedactLiveLocationShareTask
+
+    @Binds
+    abstract fun bindGetCreateRoomParamsFromLocalRoomTask(task: DefaultGetCreateRoomParamsFromLocalRoomTask): GetCreateRoomParamsFromLocalRoomTask
 }
