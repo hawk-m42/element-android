@@ -33,7 +33,7 @@ import org.matrix.android.sdk.internal.util.awaitTransaction
 internal class FakeMonarchy {
 
     val instance = mockk<Monarchy>()
-    private val fakeRealm = FakeRealm()
+    val fakeRealm = FakeRealm()
 
     init {
         mockkStatic("org.matrix.android.sdk.internal.util.MonarchyKt")
