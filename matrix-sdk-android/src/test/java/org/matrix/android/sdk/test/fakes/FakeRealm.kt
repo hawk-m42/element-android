@@ -44,26 +44,35 @@ internal class FakeRealm {
     }
 }
 
-inline fun <reified T : RealmModel> RealmQuery<T>.givenFindFirst(
+internal class FakeRealmResults<T>(results: List<T>) {
+
+    val instance = mockk<RealmResults<T>>(relaxed = true)
+
+    init {
+        results.forEachIndexed { index, t ->
+            every { instance[index] } returns t
+        }
+        every { instance.size } returns results.size
+        every { instance.iterator() } returns results.toMutableList().iterator()
+    }
+}
+
+internal inline fun <reified T : RealmModel> RealmQuery<T>.givenFindFirst(
         result: T?
 ): RealmQuery<T> {
     every { findFirst() } returns result
     return this
 }
 
-inline fun <reified T : RealmModel> RealmQuery<T>.givenFindAll(
+internal inline fun <reified T : RealmModel> RealmQuery<T>.givenFindAll(
         result: List<T>
 ): RealmQuery<T> {
-    val realmResults = mockk<RealmResults<T>>()
-    result.forEachIndexed { index, t ->
-        every { realmResults[index] } returns t
-    }
-    every { realmResults.size } returns result.size
-    every { findAll() } returns realmResults
+    val realmResults = FakeRealmResults(result)
+    every { findAll() } returns realmResults.instance
     return this
 }
 
-inline fun <reified T : RealmModel> RealmQuery<T>.givenEqualTo(
+internal inline fun <reified T : RealmModel> RealmQuery<T>.givenEqualTo(
         fieldName: String,
         value: String
 ): RealmQuery<T> {
@@ -71,7 +80,7 @@ inline fun <reified T : RealmModel> RealmQuery<T>.givenEqualTo(
     return this
 }
 
-inline fun <reified T : RealmModel> RealmQuery<T>.givenEqualTo(
+internal inline fun <reified T : RealmModel> RealmQuery<T>.givenEqualTo(
         fieldName: String,
         value: Boolean
 ): RealmQuery<T> {
@@ -79,7 +88,7 @@ inline fun <reified T : RealmModel> RealmQuery<T>.givenEqualTo(
     return this
 }
 
-inline fun <reified T : RealmModel> RealmQuery<T>.givenNotEqualTo(
+internal inline fun <reified T : RealmModel> RealmQuery<T>.givenNotEqualTo(
         fieldName: String,
         value: String
 ): RealmQuery<T> {
@@ -87,14 +96,14 @@ inline fun <reified T : RealmModel> RealmQuery<T>.givenNotEqualTo(
     return this
 }
 
-inline fun <reified T : RealmModel> RealmQuery<T>.givenIsNotEmpty(
+internal inline fun <reified T : RealmModel> RealmQuery<T>.givenIsNotEmpty(
         fieldName: String
 ): RealmQuery<T> {
     every { isNotEmpty(fieldName) } returns this
     return this
 }
 
-inline fun <reified T : RealmModel> RealmQuery<T>.givenIsNotNull(
+internal inline fun <reified T : RealmModel> RealmQuery<T>.givenIsNotNull(
         fieldName: String
 ): RealmQuery<T> {
     every { isNotNull(fieldName) } returns this
