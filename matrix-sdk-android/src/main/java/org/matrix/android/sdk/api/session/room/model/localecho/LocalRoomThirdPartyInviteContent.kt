@@ -36,4 +36,6 @@ data class LocalRoomThirdPartyInviteContent(
 data class LocalThreePid(
         val email: String? = null,
         val msisdn: String? = null,
-)
+) {
+    val value get() = email ?: msisdn
+}

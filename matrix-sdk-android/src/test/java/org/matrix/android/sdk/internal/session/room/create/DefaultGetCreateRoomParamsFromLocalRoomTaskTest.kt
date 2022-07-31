@@ -18,19 +18,23 @@ package org.matrix.android.sdk.internal.session.room.create
 
 import io.mockk.every
 import io.mockk.unmockkAll
-import io.realm.RealmResults
 import io.realm.kotlin.where
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.amshove.kluent.shouldBeEqualTo
 import org.junit.After
 import org.junit.Test
+import org.matrix.android.sdk.api.session.events.model.Content
 import org.matrix.android.sdk.api.session.events.model.Event
 import org.matrix.android.sdk.api.session.events.model.EventType
 import org.matrix.android.sdk.api.session.events.model.toContent
+import org.matrix.android.sdk.api.session.events.model.toModel
 import org.matrix.android.sdk.api.session.room.model.Membership
 import org.matrix.android.sdk.api.session.room.model.RoomMemberContent
+import org.matrix.android.sdk.api.session.room.model.localecho.LocalRoomThirdPartyInviteContent
+import org.matrix.android.sdk.api.session.room.model.localecho.LocalThreePid
 import org.matrix.android.sdk.api.session.room.send.SendState
+import org.matrix.android.sdk.internal.database.mapper.asDomain
 import org.matrix.android.sdk.internal.database.mapper.toEntity
 import org.matrix.android.sdk.internal.database.model.CurrentStateEventEntity
 import org.matrix.android.sdk.internal.database.model.CurrentStateEventEntityFields
@@ -43,7 +47,6 @@ import java.util.UUID
 
 private const val A_LOCAL_ROOM_ID = "a-local-room-id"
 private const val MY_USER_ID = "my-user-id"
-private const val AN_EVENT_ID = "event-id"
 
 private const val A_DISPLAY_NAME = "display-name"
 private const val AN_AVATAR_URL = "avatar-url"
@@ -62,7 +65,7 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
     }
 
     @Test
-    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct invited members list`() = runTest {
+    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct invited users list`() = runTest {
         // Given
         val stateEventEntities = listOf(
                 givenARoomMemberStateEvent(MY_USER_ID, Membership.JOIN),
@@ -86,22 +89,76 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         result.invitedUserIds shouldBeEqualTo stateEventEntities.map { it.stateKey }
     }
 
+    @Test
+    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct third party invites list`() = runTest {
+        // Given
+        val stateEventEntities = listOf(
+                givenAThreePidStateEvent(LocalThreePid(email = "bob@matrix.org")),
+                givenAThreePidStateEvent(LocalThreePid(msisdn = "+11111111111")),
+                givenAThreePidStateEvent(LocalThreePid(email = "alice@matrix.org")),
+                givenAThreePidStateEvent(LocalThreePid(msisdn = "+22222222222")),
+        )
+        val expected = stateEventEntities.mapNotNull {
+            it.root?.asDomain()?.getClearContent().toModel<LocalRoomThirdPartyInviteContent>()?.thirdPartyInvite?.value
+        }
+
+        val realmResults = FakeRealmResults(stateEventEntities)
+        every {
+            fakeMonarchy.fakeRealm.instance
+                    .where<CurrentStateEventEntity>()
+                    .equalTo(CurrentStateEventEntityFields.ROOM_ID, A_LOCAL_ROOM_ID)
+                    .findAll()
+        } returns realmResults.instance
+
+        // When
+        val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
+        val result = defaultGetCreateRoomFromLocalRoomTask.execute(params)
+
+        // Then
+        result.invite3pids.map { it.value } shouldBeEqualTo expected
+    }
+
+    // Mock
+
     private fun givenARoomMemberStateEvent(userId: String, membership: Membership): CurrentStateEventEntity {
-        // Create the room member event
-        val eventEntity = Event(
+        return createCurrentStateEventEntity(
                 type = EventType.STATE_ROOM_MEMBER,
-                senderId = MY_USER_ID,
                 stateKey = userId,
-                eventId = UUID.randomUUID().toString(),
-                originServerTs = clock.epochMillis(),
                 content = RoomMemberContent(
                         membership = membership,
                         displayName = "${userId}_$A_DISPLAY_NAME",
                         avatarUrl = "${userId}_$AN_AVATAR_URL"
                 ).toContent()
+        )
+    }
+
+    private fun givenAThreePidStateEvent(threePid: LocalThreePid): CurrentStateEventEntity {
+        return createCurrentStateEventEntity(
+                type = EventType.LOCAL_STATE_ROOM_THIRD_PARTY_INVITE,
+                stateKey = "",
+                content = LocalRoomThirdPartyInviteContent(
+                        membership = Membership.INVITE,
+                        thirdPartyInvite = threePid
+                ).toContent()
+        )
+    }
+
+    // Utils
+
+    private fun createCurrentStateEventEntity(
+            type: String,
+            stateKey: String,
+            content: Content?
+    ): CurrentStateEventEntity {
+        val eventEntity = Event(
+                type = type,
+                senderId = MY_USER_ID,
+                stateKey = stateKey,
+                eventId = UUID.randomUUID().toString(),
+                content = content
         ).toEntity(A_LOCAL_ROOM_ID, SendState.SYNCED, clock.epochMillis())
 
-        // Mock it in DB
+        // Mock in DB
         every {
             fakeMonarchy.fakeRealm.instance
                     .where<EventEntity>()
@@ -109,14 +166,14 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                     .findFirst()
         } returns eventEntity
 
-        // Return the resulting state event
-        return CurrentStateEventEntity(
-                eventId = eventEntity.eventId,
-                root = eventEntity,
-                roomId = eventEntity.roomId,
-                type = eventEntity.type,
-                stateKey = eventEntity.stateKey!!
-        )
+        return eventEntity.toCurrentStateEvent()
     }
-}
 
+    private fun EventEntity.toCurrentStateEvent() = CurrentStateEventEntity(
+            eventId = eventId,
+            root = this,
+            roomId = roomId,
+            type = type,
+            stateKey = stateKey!!
+    )
+}
