@@ -47,6 +47,7 @@ import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibility
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibilityContent
 import org.matrix.android.sdk.api.session.room.model.RoomMemberContent
 import org.matrix.android.sdk.api.session.room.model.RoomNameContent
+import org.matrix.android.sdk.api.session.room.model.RoomTopicContent
 import org.matrix.android.sdk.api.session.room.model.localecho.LocalRoomThirdPartyInviteContent
 import org.matrix.android.sdk.api.session.room.model.localecho.LocalThreePid
 import org.matrix.android.sdk.api.session.room.send.SendState
@@ -279,6 +280,22 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         result.name shouldBeEqualTo expected
     }
 
+    @Test
+    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct topic`() = runTest {
+        // Given
+        val expected = "a_room_topic"
+
+        val stateEventEntities = listOf(givenARoomTopicStateEvent(expected))
+        mockRealmResults(stateEventEntities)
+
+        // When
+        val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
+        val result = defaultGetCreateRoomFromLocalRoomTask.execute(params)
+
+        // Then
+        result.topic shouldBeEqualTo expected
+    }
+
     // Mock
 
     private fun givenARoomMemberStateEvent(userId: String, membership: Membership): CurrentStateEventEntity {
@@ -372,12 +389,22 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         )
     }
 
-    private fun givenARoomNameStateEvent(roomName: String): CurrentStateEventEntity {
+    private fun givenARoomNameStateEvent(roomName: String?): CurrentStateEventEntity {
         return createCurrentStateEventEntity(
                 type = EventType.STATE_ROOM_NAME,
                 stateKey = "",
                 content = RoomNameContent(
                         name = roomName
+                ).toContent()
+        )
+    }
+
+    private fun givenARoomTopicStateEvent(topic: String?): CurrentStateEventEntity {
+        return createCurrentStateEventEntity(
+                type = EventType.STATE_ROOM_TOPIC,
+                stateKey = "",
+                content = RoomTopicContent(
+                        topic = topic
                 ).toContent()
         )
     }
