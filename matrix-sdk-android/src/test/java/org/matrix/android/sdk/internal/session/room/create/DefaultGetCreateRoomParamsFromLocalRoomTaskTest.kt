@@ -345,6 +345,11 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
 
                 // Then
                 result.preset shouldBeEqualTo case.expected
+                if (case.isDirect) {
+                    result.isDirect shouldBeEqualTo true
+                } else {
+                    result.isDirect shouldNotBeEqualTo true
+                }
             }
         }
     }
