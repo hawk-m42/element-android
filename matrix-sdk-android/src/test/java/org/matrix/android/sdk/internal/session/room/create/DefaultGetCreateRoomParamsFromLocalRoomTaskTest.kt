@@ -30,6 +30,8 @@ import org.matrix.android.sdk.api.session.events.model.EventType
 import org.matrix.android.sdk.api.session.events.model.toContent
 import org.matrix.android.sdk.api.session.events.model.toModel
 import org.matrix.android.sdk.api.session.room.model.Membership
+import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibility
+import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibilityContent
 import org.matrix.android.sdk.api.session.room.model.RoomMemberContent
 import org.matrix.android.sdk.api.session.room.model.localecho.LocalRoomThirdPartyInviteContent
 import org.matrix.android.sdk.api.session.room.model.localecho.LocalThreePid
@@ -118,6 +120,35 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         result.invite3pids.map { it.value } shouldBeEqualTo expected
     }
 
+    @Test
+    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct history visibility`() = runTest {
+        RoomHistoryVisibility.values().forEach { expected ->
+            // Given
+            val historyVisibilityStr = when (expected) {
+                RoomHistoryVisibility.WORLD_READABLE -> "world_readable"
+                RoomHistoryVisibility.SHARED -> "shared"
+                RoomHistoryVisibility.INVITED -> "invited"
+                RoomHistoryVisibility.JOINED -> "joined"
+            }
+            val stateEventEntities = listOf(givenAnHistoryVisibilityStateEvent(historyVisibilityStr))
+
+            val realmResults = FakeRealmResults(stateEventEntities)
+            every {
+                fakeMonarchy.fakeRealm.instance
+                        .where<CurrentStateEventEntity>()
+                        .equalTo(CurrentStateEventEntityFields.ROOM_ID, A_LOCAL_ROOM_ID)
+                        .findAll()
+            } returns realmResults.instance
+
+            // When
+            val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
+            val result = defaultGetCreateRoomFromLocalRoomTask.execute(params)
+
+            // Then
+            result.historyVisibility shouldBeEqualTo expected
+        }
+    }
+
     // Mock
 
     private fun givenARoomMemberStateEvent(userId: String, membership: Membership): CurrentStateEventEntity {
@@ -139,6 +170,16 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                 content = LocalRoomThirdPartyInviteContent(
                         membership = Membership.INVITE,
                         thirdPartyInvite = threePid
+                ).toContent()
+        )
+    }
+
+    private fun givenAnHistoryVisibilityStateEvent(historyVisibilityStr: String): CurrentStateEventEntity {
+        return createCurrentStateEventEntity(
+                type = EventType.STATE_ROOM_HISTORY_VISIBILITY,
+                stateKey = "",
+                content = RoomHistoryVisibilityContent(
+                        historyVisibilityStr = historyVisibilityStr
                 ).toContent()
         )
     }
