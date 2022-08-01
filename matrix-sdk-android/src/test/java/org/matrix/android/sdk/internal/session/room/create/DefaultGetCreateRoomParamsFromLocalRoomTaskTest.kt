@@ -28,7 +28,6 @@ import org.matrix.android.sdk.api.session.events.model.Content
 import org.matrix.android.sdk.api.session.events.model.Event
 import org.matrix.android.sdk.api.session.events.model.EventType
 import org.matrix.android.sdk.api.session.events.model.toContent
-import org.matrix.android.sdk.api.session.events.model.toModel
 import org.matrix.android.sdk.api.session.room.model.Membership
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibility
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibilityContent
@@ -36,7 +35,6 @@ import org.matrix.android.sdk.api.session.room.model.RoomMemberContent
 import org.matrix.android.sdk.api.session.room.model.localecho.LocalRoomThirdPartyInviteContent
 import org.matrix.android.sdk.api.session.room.model.localecho.LocalThreePid
 import org.matrix.android.sdk.api.session.room.send.SendState
-import org.matrix.android.sdk.internal.database.mapper.asDomain
 import org.matrix.android.sdk.internal.database.mapper.toEntity
 import org.matrix.android.sdk.internal.database.model.CurrentStateEventEntity
 import org.matrix.android.sdk.internal.database.model.CurrentStateEventEntityFields
@@ -74,43 +72,31 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                 givenARoomMemberStateEvent("bob", Membership.INVITE),
                 givenARoomMemberStateEvent("alice", Membership.INVITE)
         )
+        val expected = stateEventEntities.map { it.stateKey }
 
-        val realmResults = FakeRealmResults(stateEventEntities)
-        every {
-            fakeMonarchy.fakeRealm.instance
-                    .where<CurrentStateEventEntity>()
-                    .equalTo(CurrentStateEventEntityFields.ROOM_ID, A_LOCAL_ROOM_ID)
-                    .findAll()
-        } returns realmResults.instance
+        mockRealmResults(stateEventEntities)
 
         // When
         val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
         val result = defaultGetCreateRoomFromLocalRoomTask.execute(params)
 
         // Then
-        result.invitedUserIds shouldBeEqualTo stateEventEntities.map { it.stateKey }
+        result.invitedUserIds shouldBeEqualTo expected
     }
 
     @Test
     fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct third party invites list`() = runTest {
         // Given
-        val stateEventEntities = listOf(
-                givenAThreePidStateEvent(LocalThreePid(email = "bob@matrix.org")),
-                givenAThreePidStateEvent(LocalThreePid(msisdn = "+11111111111")),
-                givenAThreePidStateEvent(LocalThreePid(email = "alice@matrix.org")),
-                givenAThreePidStateEvent(LocalThreePid(msisdn = "+22222222222")),
+        val threePids = listOf(
+                LocalThreePid(email = "bob@matrix.org"),
+                LocalThreePid(msisdn = "+11111111111"),
+                LocalThreePid(email = "alice@matrix.org"),
+                LocalThreePid(msisdn = "+22222222222"),
         )
-        val expected = stateEventEntities.mapNotNull {
-            it.root?.asDomain()?.getClearContent().toModel<LocalRoomThirdPartyInviteContent>()?.thirdPartyInvite?.value
-        }
+        val expected = threePids.map { it.value }
 
-        val realmResults = FakeRealmResults(stateEventEntities)
-        every {
-            fakeMonarchy.fakeRealm.instance
-                    .where<CurrentStateEventEntity>()
-                    .equalTo(CurrentStateEventEntityFields.ROOM_ID, A_LOCAL_ROOM_ID)
-                    .findAll()
-        } returns realmResults.instance
+        val stateEventEntities = threePids.map { givenAThreePidStateEvent(it) }
+        mockRealmResults(stateEventEntities)
 
         // When
         val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
@@ -130,15 +116,9 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                 RoomHistoryVisibility.INVITED -> "invited"
                 RoomHistoryVisibility.JOINED -> "joined"
             }
-            val stateEventEntities = listOf(givenAnHistoryVisibilityStateEvent(historyVisibilityStr))
 
-            val realmResults = FakeRealmResults(stateEventEntities)
-            every {
-                fakeMonarchy.fakeRealm.instance
-                        .where<CurrentStateEventEntity>()
-                        .equalTo(CurrentStateEventEntityFields.ROOM_ID, A_LOCAL_ROOM_ID)
-                        .findAll()
-            } returns realmResults.instance
+            val stateEventEntities = listOf(givenAnHistoryVisibilityStateEvent(historyVisibilityStr))
+            mockRealmResults(stateEventEntities)
 
             // When
             val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
@@ -185,6 +165,16 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
     }
 
     // Utils
+
+    private fun mockRealmResults(stateEventEntities: List<CurrentStateEventEntity>) {
+        val realmResults = FakeRealmResults(stateEventEntities)
+        every {
+            fakeMonarchy.fakeRealm.instance
+                    .where<CurrentStateEventEntity>()
+                    .equalTo(CurrentStateEventEntityFields.ROOM_ID, A_LOCAL_ROOM_ID)
+                    .findAll()
+        } returns realmResults.instance
+    }
 
     private fun createCurrentStateEventEntity(
             type: String,
