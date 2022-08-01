@@ -429,6 +429,7 @@ internal class MXMegolmEncryption(
         val unknownDevices = MXUsersDevicesMap<CryptoDeviceInfo>()
 
         for (userId in keys.userIds) {
+            val isUserVerified = cryptoStore.getCrossSigningInfo(userId)?.isTrusted() ?: false
             val deviceIds = keys.getUserDeviceIds(userId) ?: continue
             for (deviceId in deviceIds) {
                 val deviceInfo = keys.getObject(userId, deviceId) ?: continue
@@ -444,6 +445,13 @@ internal class MXMegolmEncryption(
                 }
 
                 if (!deviceInfo.isVerified && encryptToVerifiedDevicesOnly) {
+                    devicesInRoom.withHeldDevices.setObject(userId, deviceId, WithHeldCode.UNVERIFIED)
+                    continue
+                }
+
+                if (isUserVerified && !deviceInfo.isVerified) {
+                    // We explicitly verified this user and one of his devices is not trusted
+                    // we shouldn't send keys to this device
                     devicesInRoom.withHeldDevices.setObject(userId, deviceId, WithHeldCode.UNVERIFIED)
                     continue
                 }
