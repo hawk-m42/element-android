@@ -106,7 +106,7 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         )
         val expected = threePids.map { it.value }
 
-        val stateEventEntities = threePids.map { givenAThreePidStateEvent(it) }
+        val stateEventEntities = threePids.map { givenARoomThreePidStateEvent(it) }
         mockRealmResults(stateEventEntities)
 
         // When
@@ -128,7 +128,7 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                 RoomHistoryVisibility.JOINED -> "joined"
             }
 
-            val stateEventEntities = listOf(givenAnHistoryVisibilityStateEvent(historyVisibilityStr))
+            val stateEventEntities = listOf(givenARoomHistoryVisibilityStateEvent(historyVisibilityStr))
             mockRealmResults(stateEventEntities)
 
             // When
@@ -231,7 +231,7 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         )
     }
 
-    private fun givenAThreePidStateEvent(threePid: LocalThreePid?): CurrentStateEventEntity {
+    private fun givenARoomThreePidStateEvent(threePid: LocalThreePid?): CurrentStateEventEntity {
         return createCurrentStateEventEntity(
                 type = EventType.LOCAL_STATE_ROOM_THIRD_PARTY_INVITE,
                 stateKey = "",
@@ -242,7 +242,7 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         )
     }
 
-    private fun givenAnHistoryVisibilityStateEvent(historyVisibilityStr: String?): CurrentStateEventEntity {
+    private fun givenARoomHistoryVisibilityStateEvent(historyVisibilityStr: String?): CurrentStateEventEntity {
         return createCurrentStateEventEntity(
                 type = EventType.STATE_ROOM_HISTORY_VISIBILITY,
                 stateKey = "",
