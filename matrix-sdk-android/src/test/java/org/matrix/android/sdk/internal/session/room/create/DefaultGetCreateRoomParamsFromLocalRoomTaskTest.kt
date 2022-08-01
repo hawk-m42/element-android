@@ -46,6 +46,7 @@ import org.matrix.android.sdk.api.session.room.model.RoomGuestAccessContent
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibility
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibilityContent
 import org.matrix.android.sdk.api.session.room.model.RoomMemberContent
+import org.matrix.android.sdk.api.session.room.model.RoomNameContent
 import org.matrix.android.sdk.api.session.room.model.localecho.LocalRoomThirdPartyInviteContent
 import org.matrix.android.sdk.api.session.room.model.localecho.LocalThreePid
 import org.matrix.android.sdk.api.session.room.send.SendState
@@ -262,6 +263,22 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         result.powerLevelContentOverride shouldBeEqualTo expected
     }
 
+    @Test
+    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct room name`() = runTest {
+        // Given
+        val expected = "a_room_name"
+
+        val stateEventEntities = listOf(givenARoomNameStateEvent(expected))
+        mockRealmResults(stateEventEntities)
+
+        // When
+        val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
+        val result = defaultGetCreateRoomFromLocalRoomTask.execute(params)
+
+        // Then
+        result.name shouldBeEqualTo expected
+    }
+
     // Mock
 
     private fun givenARoomMemberStateEvent(userId: String, membership: Membership): CurrentStateEventEntity {
@@ -347,13 +364,21 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         )
     }
 
-    private fun givenARoomPowerLevelStateEvent(
-            powerLevelsContent: PowerLevelsContent?
-    ): CurrentStateEventEntity {
+    private fun givenARoomPowerLevelStateEvent(powerLevelsContent: PowerLevelsContent?): CurrentStateEventEntity {
         return createCurrentStateEventEntity(
                 type = EventType.STATE_ROOM_POWER_LEVELS,
                 stateKey = "",
                 content = powerLevelsContent.toContent()
+        )
+    }
+
+    private fun givenARoomNameStateEvent(roomName: String): CurrentStateEventEntity {
+        return createCurrentStateEventEntity(
+                type = EventType.STATE_ROOM_NAME,
+                stateKey = "",
+                content = RoomNameContent(
+                        name = roomName
+                ).toContent()
         )
     }
 
