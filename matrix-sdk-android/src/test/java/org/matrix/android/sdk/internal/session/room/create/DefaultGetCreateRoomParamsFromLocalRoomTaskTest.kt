@@ -33,10 +33,12 @@ import org.matrix.android.sdk.api.session.events.model.Content
 import org.matrix.android.sdk.api.session.events.model.Event
 import org.matrix.android.sdk.api.session.events.model.EventType
 import org.matrix.android.sdk.api.session.events.model.toContent
+import org.matrix.android.sdk.api.session.room.model.GuestAccess
 import org.matrix.android.sdk.api.session.room.model.Membership
 import org.matrix.android.sdk.api.session.room.model.RoomAliasesContent
 import org.matrix.android.sdk.api.session.room.model.RoomAvatarContent
 import org.matrix.android.sdk.api.session.room.model.RoomCanonicalAliasContent
+import org.matrix.android.sdk.api.session.room.model.RoomGuestAccessContent
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibility
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibilityContent
 import org.matrix.android.sdk.api.session.room.model.RoomMemberContent
@@ -194,6 +196,27 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         result.roomAliasName shouldBeEqualTo expected
     }
 
+    @Test
+    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct guest access`() = runTest {
+        GuestAccess.values().forEach { expected ->
+            // Given
+            val guestAccessStr = when (expected) {
+                GuestAccess.CanJoin -> "can_join"
+                GuestAccess.Forbidden -> "forbidden"
+            }
+
+            val stateEventEntities = listOf(givenARoomGuestAccessStateEvent(guestAccessStr))
+            mockRealmResults(stateEventEntities)
+
+            // When
+            val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
+            val result = defaultGetCreateRoomFromLocalRoomTask.execute(params)
+
+            // Then
+            result.guestAccess shouldBeEqualTo expected
+        }
+    }
+
     // Mock
 
     private fun givenARoomMemberStateEvent(userId: String, membership: Membership): CurrentStateEventEntity {
@@ -255,6 +278,16 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                 stateKey = "",
                 content = RoomCanonicalAliasContent(
                         canonicalAlias = canonicalAlias
+                ).toContent()
+        )
+    }
+
+    private fun givenARoomGuestAccessStateEvent(guestAccessStr: String?): CurrentStateEventEntity {
+        return createCurrentStateEventEntity(
+                type = EventType.STATE_ROOM_GUEST_ACCESS,
+                stateKey = "",
+                content = RoomGuestAccessContent(
+                        guestAccessStr = guestAccessStr
                 ).toContent()
         )
     }
