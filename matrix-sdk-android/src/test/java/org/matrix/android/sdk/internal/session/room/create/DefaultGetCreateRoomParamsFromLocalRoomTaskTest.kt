@@ -38,6 +38,7 @@ import org.matrix.android.sdk.api.session.events.model.content.EncryptionEventCo
 import org.matrix.android.sdk.api.session.events.model.toContent
 import org.matrix.android.sdk.api.session.room.model.GuestAccess
 import org.matrix.android.sdk.api.session.room.model.Membership
+import org.matrix.android.sdk.api.session.room.model.PowerLevelsContent
 import org.matrix.android.sdk.api.session.room.model.RoomAliasesContent
 import org.matrix.android.sdk.api.session.room.model.RoomAvatarContent
 import org.matrix.android.sdk.api.session.room.model.RoomCanonicalAliasContent
@@ -234,6 +235,33 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         result.algorithm shouldNotBeEqualTo null
     }
 
+    @Test
+    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct powerLevels`() = runTest {
+        // Given
+        val expected = PowerLevelsContent(
+                ban = 99,
+                kick = 98,
+                invite = 97,
+                redact = 96,
+                eventsDefault = 95,
+                events = mapOf(EventType.STATE_ROOM_TOPIC to 94, EventType.STATE_ROOM_AVATAR to 93),
+                usersDefault = 92,
+                users = mapOf("alice" to 91, "bob" to 90),
+                stateDefault = 89,
+                notifications = mapOf(PowerLevelsContent.NOTIFICATIONS_ROOM_KEY to 88.0)
+        )
+
+        val stateEventEntities = listOf(givenARoomPowerLevelStateEvent(expected))
+        mockRealmResults(stateEventEntities)
+
+        // When
+        val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
+        val result = defaultGetCreateRoomFromLocalRoomTask.execute(params)
+
+        // Then
+        result.powerLevelContentOverride shouldBeEqualTo expected
+    }
+
     // Mock
 
     private fun givenARoomMemberStateEvent(userId: String, membership: Membership): CurrentStateEventEntity {
@@ -316,6 +344,16 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                 content = EncryptionEventContent(
                         algorithm = MXCRYPTO_ALGORITHM_MEGOLM
                 ).toContent()
+        )
+    }
+
+    private fun givenARoomPowerLevelStateEvent(
+            powerLevelsContent: PowerLevelsContent?
+    ): CurrentStateEventEntity {
+        return createCurrentStateEventEntity(
+                type = EventType.STATE_ROOM_POWER_LEVELS,
+                stateKey = "",
+                content = powerLevelsContent.toContent()
         )
     }
 
