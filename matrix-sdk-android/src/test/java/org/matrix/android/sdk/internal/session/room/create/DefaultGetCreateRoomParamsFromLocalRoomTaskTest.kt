@@ -27,11 +27,14 @@ import io.realm.kotlin.where
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.amshove.kluent.shouldBeEqualTo
+import org.amshove.kluent.shouldNotBeEqualTo
 import org.junit.After
 import org.junit.Test
+import org.matrix.android.sdk.api.crypto.MXCRYPTO_ALGORITHM_MEGOLM
 import org.matrix.android.sdk.api.session.events.model.Content
 import org.matrix.android.sdk.api.session.events.model.Event
 import org.matrix.android.sdk.api.session.events.model.EventType
+import org.matrix.android.sdk.api.session.events.model.content.EncryptionEventContent
 import org.matrix.android.sdk.api.session.events.model.toContent
 import org.matrix.android.sdk.api.session.room.model.GuestAccess
 import org.matrix.android.sdk.api.session.room.model.Membership
@@ -217,6 +220,20 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         }
     }
 
+    @Test
+    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct encryption`() = runTest {
+        // Given
+        val stateEventEntities = listOf(givenARoomEncryptionStateEvent())
+        mockRealmResults(stateEventEntities)
+
+        // When
+        val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
+        val result = defaultGetCreateRoomFromLocalRoomTask.execute(params)
+
+        // Then
+        result.algorithm shouldNotBeEqualTo null
+    }
+
     // Mock
 
     private fun givenARoomMemberStateEvent(userId: String, membership: Membership): CurrentStateEventEntity {
@@ -288,6 +305,16 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                 stateKey = "",
                 content = RoomGuestAccessContent(
                         guestAccessStr = guestAccessStr
+                ).toContent()
+        )
+    }
+
+    private fun givenARoomEncryptionStateEvent(): CurrentStateEventEntity {
+        return createCurrentStateEventEntity(
+                type = EventType.STATE_ROOM_ENCRYPTION,
+                stateKey = "",
+                content = EncryptionEventContent(
+                        algorithm = MXCRYPTO_ALGORITHM_MEGOLM
                 ).toContent()
         )
     }
