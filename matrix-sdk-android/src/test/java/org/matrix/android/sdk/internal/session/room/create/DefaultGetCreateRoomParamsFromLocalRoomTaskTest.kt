@@ -50,6 +50,7 @@ import org.matrix.android.sdk.api.session.room.model.RoomJoinRulesContent
 import org.matrix.android.sdk.api.session.room.model.RoomMemberContent
 import org.matrix.android.sdk.api.session.room.model.RoomNameContent
 import org.matrix.android.sdk.api.session.room.model.RoomTopicContent
+import org.matrix.android.sdk.api.session.room.model.create.CreateRoomParams
 import org.matrix.android.sdk.api.session.room.model.create.CreateRoomPreset
 import org.matrix.android.sdk.api.session.room.model.localecho.LocalRoomThirdPartyInviteContent
 import org.matrix.android.sdk.api.session.room.model.localecho.LocalThreePid
@@ -346,6 +347,41 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                 result.preset shouldBeEqualTo case.expected
             }
         }
+    }
+
+    @Test
+    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct defaults`() = runTest {
+        // Given
+        val expected = CreateRoomParams()
+
+        val stateEventEntities = emptyList<CurrentStateEventEntity>()
+        mockRealmResults(stateEventEntities)
+
+        // When
+        val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
+        val result = defaultGetCreateRoomFromLocalRoomTask.execute(params)
+
+        // Then
+        result.algorithm shouldBeEqualTo expected.algorithm
+        result.avatarUri shouldBeEqualTo expected.avatarUri
+        result.creationContent shouldBeEqualTo expected.creationContent
+        result.disableFederation shouldBeEqualTo expected.disableFederation
+        result.enableEncryptionIfInvitedUsersSupportIt shouldBeEqualTo expected.enableEncryptionIfInvitedUsersSupportIt
+        result.featurePreset shouldBeEqualTo expected.featurePreset
+        result.guestAccess shouldBeEqualTo expected.guestAccess
+        result.historyVisibility shouldBeEqualTo expected.historyVisibility
+        result.isDirect shouldBeEqualTo expected.isDirect
+        result.initialStates shouldBeEqualTo expected.initialStates
+        result.invite3pids shouldBeEqualTo expected.invite3pids
+        result.invitedUserIds shouldBeEqualTo expected.invitedUserIds
+        result.name shouldBeEqualTo expected.name
+        result.powerLevelContentOverride shouldBeEqualTo expected.powerLevelContentOverride
+        result.preset shouldBeEqualTo expected.preset
+        result.roomAliasName shouldBeEqualTo expected.roomAliasName
+        result.roomType shouldBeEqualTo expected.roomType
+        result.roomVersion shouldBeEqualTo expected.roomVersion
+        result.topic shouldBeEqualTo expected.topic
+        result.visibility shouldBeEqualTo expected.visibility
     }
 
     // Mock
