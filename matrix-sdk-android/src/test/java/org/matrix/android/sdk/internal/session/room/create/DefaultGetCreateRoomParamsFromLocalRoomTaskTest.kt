@@ -36,6 +36,7 @@ import org.matrix.android.sdk.api.session.events.model.toContent
 import org.matrix.android.sdk.api.session.room.model.Membership
 import org.matrix.android.sdk.api.session.room.model.RoomAliasesContent
 import org.matrix.android.sdk.api.session.room.model.RoomAvatarContent
+import org.matrix.android.sdk.api.session.room.model.RoomCanonicalAliasContent
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibility
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibilityContent
 import org.matrix.android.sdk.api.session.room.model.RoomMemberContent
@@ -176,6 +177,23 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         result.avatarUri.toString() shouldBeEqualTo expected
     }
 
+    @Test
+    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct canonical alias`() = runTest {
+        // Given
+        val expected = "fake_room_canonical_alias"
+        val roomCanonicalAlias = "#fake_room_canonical_alias:matrix.org"
+
+        val stateEventEntities = listOf(givenARoomCanonicalAliasStateEvent(roomCanonicalAlias))
+        mockRealmResults(stateEventEntities)
+
+        // When
+        val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
+        val result = defaultGetCreateRoomFromLocalRoomTask.execute(params)
+
+        // Then
+        result.roomAliasName shouldBeEqualTo expected
+    }
+
     // Mock
 
     private fun givenARoomMemberStateEvent(userId: String, membership: Membership): CurrentStateEventEntity {
@@ -227,6 +245,16 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                 stateKey = "",
                 content = RoomAvatarContent(
                         avatarUrl = avatarUrl
+                ).toContent()
+        )
+    }
+
+    private fun givenARoomCanonicalAliasStateEvent(canonicalAlias: String?): CurrentStateEventEntity {
+        return createCurrentStateEventEntity(
+                type = EventType.STATE_ROOM_CANONICAL_ALIAS,
+                stateKey = "",
+                content = RoomCanonicalAliasContent(
+                        canonicalAlias = canonicalAlias
                 ).toContent()
         )
     }
