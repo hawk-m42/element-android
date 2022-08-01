@@ -16,8 +16,13 @@
 
 package org.matrix.android.sdk.internal.session.room.create
 
+import android.net.Uri
 import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.slot
 import io.mockk.unmockkAll
+import io.mockk.unmockkStatic
 import io.realm.kotlin.where
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
@@ -30,6 +35,7 @@ import org.matrix.android.sdk.api.session.events.model.EventType
 import org.matrix.android.sdk.api.session.events.model.toContent
 import org.matrix.android.sdk.api.session.room.model.Membership
 import org.matrix.android.sdk.api.session.room.model.RoomAliasesContent
+import org.matrix.android.sdk.api.session.room.model.RoomAvatarContent
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibility
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibilityContent
 import org.matrix.android.sdk.api.session.room.model.RoomMemberContent
@@ -63,6 +69,7 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
     @After
     fun tearDown() {
         unmockkAll()
+        unmockkStatic(Uri::class)
     }
 
     @Test
@@ -147,6 +154,28 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         result.roomAliasName shouldBeEqualTo expected
     }
 
+    @Test
+    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct room avatar uri`() = runTest {
+        // Given
+        mockkStatic(Uri::class)
+        val uri = mockk<Uri>()
+        val uriString = slot<String>()
+        every { Uri.parse(capture(uriString)) } returns uri
+        every { uri.toString() } answers { uriString.captured }
+
+        val expected = "an_avatar_url"
+
+        val stateEventEntities = listOf(givenARoomAvatarStateEvent(expected))
+        mockRealmResults(stateEventEntities)
+
+        // When
+        val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
+        val result = defaultGetCreateRoomFromLocalRoomTask.execute(params)
+
+        // Then
+        result.avatarUri.toString() shouldBeEqualTo expected
+    }
+
     // Mock
 
     private fun givenARoomMemberStateEvent(userId: String, membership: Membership): CurrentStateEventEntity {
@@ -161,7 +190,7 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         )
     }
 
-    private fun givenAThreePidStateEvent(threePid: LocalThreePid): CurrentStateEventEntity {
+    private fun givenAThreePidStateEvent(threePid: LocalThreePid?): CurrentStateEventEntity {
         return createCurrentStateEventEntity(
                 type = EventType.LOCAL_STATE_ROOM_THIRD_PARTY_INVITE,
                 stateKey = "",
@@ -172,7 +201,7 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         )
     }
 
-    private fun givenAnHistoryVisibilityStateEvent(historyVisibilityStr: String): CurrentStateEventEntity {
+    private fun givenAnHistoryVisibilityStateEvent(historyVisibilityStr: String?): CurrentStateEventEntity {
         return createCurrentStateEventEntity(
                 type = EventType.STATE_ROOM_HISTORY_VISIBILITY,
                 stateKey = "",
@@ -188,6 +217,16 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                 stateKey = "",
                 content = RoomAliasesContent(
                         aliases = aliases
+                ).toContent()
+        )
+    }
+
+    private fun givenARoomAvatarStateEvent(avatarUrl: String?): CurrentStateEventEntity {
+        return createCurrentStateEventEntity(
+                type = EventType.STATE_ROOM_AVATAR,
+                stateKey = "",
+                content = RoomAvatarContent(
+                        avatarUrl = avatarUrl
                 ).toContent()
         )
     }
