@@ -29,6 +29,7 @@ import org.matrix.android.sdk.api.session.events.model.Event
 import org.matrix.android.sdk.api.session.events.model.EventType
 import org.matrix.android.sdk.api.session.events.model.toContent
 import org.matrix.android.sdk.api.session.room.model.Membership
+import org.matrix.android.sdk.api.session.room.model.RoomAliasesContent
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibility
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibilityContent
 import org.matrix.android.sdk.api.session.room.model.RoomMemberContent
@@ -129,6 +130,23 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         }
     }
 
+    @Test
+    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct room aliases`() = runTest {
+        // Given
+        val expected = "fake_room_alias"
+        val roomAlias = "#fake_room_alias:matrix.org"
+
+        val stateEventEntities = listOf(givenARoomAliasesStateEvent(listOf(roomAlias)))
+        mockRealmResults(stateEventEntities)
+
+        // When
+        val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
+        val result = defaultGetCreateRoomFromLocalRoomTask.execute(params)
+
+        // Then
+        result.roomAliasName shouldBeEqualTo expected
+    }
+
     // Mock
 
     private fun givenARoomMemberStateEvent(userId: String, membership: Membership): CurrentStateEventEntity {
@@ -160,6 +178,16 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                 stateKey = "",
                 content = RoomHistoryVisibilityContent(
                         historyVisibilityStr = historyVisibilityStr
+                ).toContent()
+        )
+    }
+
+    private fun givenARoomAliasesStateEvent(aliases: List<String>): CurrentStateEventEntity {
+        return createCurrentStateEventEntity(
+                type = EventType.STATE_ROOM_ALIASES,
+                stateKey = "",
+                content = RoomAliasesContent(
+                        aliases = aliases
                 ).toContent()
         )
     }
