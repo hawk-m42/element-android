@@ -45,9 +45,12 @@ import org.matrix.android.sdk.api.session.room.model.RoomCanonicalAliasContent
 import org.matrix.android.sdk.api.session.room.model.RoomGuestAccessContent
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibility
 import org.matrix.android.sdk.api.session.room.model.RoomHistoryVisibilityContent
+import org.matrix.android.sdk.api.session.room.model.RoomJoinRules
+import org.matrix.android.sdk.api.session.room.model.RoomJoinRulesContent
 import org.matrix.android.sdk.api.session.room.model.RoomMemberContent
 import org.matrix.android.sdk.api.session.room.model.RoomNameContent
 import org.matrix.android.sdk.api.session.room.model.RoomTopicContent
+import org.matrix.android.sdk.api.session.room.model.create.CreateRoomPreset
 import org.matrix.android.sdk.api.session.room.model.localecho.LocalRoomThirdPartyInviteContent
 import org.matrix.android.sdk.api.session.room.model.localecho.LocalThreePid
 import org.matrix.android.sdk.api.session.room.send.SendState
@@ -296,16 +299,66 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
         result.topic shouldBeEqualTo expected
     }
 
+    @Test
+    fun `given a local room id when calling the task then the resulting CreateRoomParams contains the correct preset`() {
+        data class Case(val roomJoinRulesStr: String, val isDirect: Boolean, val expected: CreateRoomPreset?)
+
+        // Given
+        val cases = mutableListOf<Case>()
+        RoomJoinRules.values().forEach { roomJoinRules ->
+            val roomJoinRulesStr = when (roomJoinRules) {
+                RoomJoinRules.PUBLIC -> "public"
+                RoomJoinRules.INVITE -> "invite"
+                RoomJoinRules.KNOCK -> "knock"
+                RoomJoinRules.PRIVATE -> "private"
+                RoomJoinRules.RESTRICTED -> "restricted"
+            }
+            when (roomJoinRules) {
+                RoomJoinRules.PUBLIC -> {
+                    cases.add(Case(roomJoinRulesStr, false, CreateRoomPreset.PRESET_PUBLIC_CHAT))
+                    cases.add(Case(roomJoinRulesStr, true, CreateRoomPreset.PRESET_TRUSTED_PRIVATE_CHAT))
+                }
+                RoomJoinRules.INVITE -> {
+                    cases.add(Case(roomJoinRulesStr, false, CreateRoomPreset.PRESET_PRIVATE_CHAT))
+                    cases.add(Case(roomJoinRulesStr, true, CreateRoomPreset.PRESET_TRUSTED_PRIVATE_CHAT))
+                }
+                else -> {
+                    cases.add(Case(roomJoinRulesStr, false, null))
+                    cases.add(Case(roomJoinRulesStr, true, CreateRoomPreset.PRESET_TRUSTED_PRIVATE_CHAT))
+                }
+            }
+        }
+
+        cases.forEach { case ->
+            runTest {
+                val stateEventEntities = listOf(
+                        givenARoomMemberStateEvent(MY_USER_ID, membership = Membership.JOIN),
+                        givenARoomMemberStateEvent("alice", membership = Membership.INVITE, case.isDirect),
+                        givenARoomJoinRuleStateEvent(case.roomJoinRulesStr)
+                )
+                mockRealmResults(stateEventEntities)
+
+                // When
+                val params = GetCreateRoomParamsFromLocalRoomTask.Params(A_LOCAL_ROOM_ID)
+                val result = defaultGetCreateRoomFromLocalRoomTask.execute(params)
+
+                // Then
+                result.preset shouldBeEqualTo case.expected
+            }
+        }
+    }
+
     // Mock
 
-    private fun givenARoomMemberStateEvent(userId: String, membership: Membership): CurrentStateEventEntity {
+    private fun givenARoomMemberStateEvent(userId: String, membership: Membership, isDirect: Boolean = false): CurrentStateEventEntity {
         return createCurrentStateEventEntity(
                 type = EventType.STATE_ROOM_MEMBER,
                 stateKey = userId,
                 content = RoomMemberContent(
                         membership = membership,
                         displayName = "${userId}_$A_DISPLAY_NAME",
-                        avatarUrl = "${userId}_$AN_AVATAR_URL"
+                        avatarUrl = "${userId}_$AN_AVATAR_URL",
+                        isDirect = isDirect
                 ).toContent()
         )
     }
@@ -405,6 +458,16 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                 stateKey = "",
                 content = RoomTopicContent(
                         topic = topic
+                ).toContent()
+        )
+    }
+
+    private fun givenARoomJoinRuleStateEvent(joinRulesStr: String?): CurrentStateEventEntity {
+        return createCurrentStateEventEntity(
+                type = EventType.STATE_ROOM_JOIN_RULES,
+                stateKey = "",
+                content = RoomJoinRulesContent(
+                        joinRulesStr = joinRulesStr
                 ).toContent()
         )
     }
