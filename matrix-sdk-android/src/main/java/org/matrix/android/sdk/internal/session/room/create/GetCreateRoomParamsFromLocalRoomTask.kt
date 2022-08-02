@@ -16,13 +16,9 @@
 
 package org.matrix.android.sdk.internal.session.room.create
 
-import android.util.Patterns
 import androidx.core.net.toUri
-import com.google.i18n.phonenumbers.NumberParseException
-import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.zhuinden.monarchy.Monarchy
 import io.realm.Realm
-import org.matrix.android.sdk.api.extensions.ensurePrefix
 import org.matrix.android.sdk.api.session.events.model.EventType
 import org.matrix.android.sdk.api.session.events.model.toModel
 import org.matrix.android.sdk.api.session.identity.ThreePid
@@ -79,7 +75,6 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTask @Inject constructor(
                     EventType.STATE_ROOM_POWER_LEVELS -> handleRoomPowerRoomLevelsEvent(realm, event, createRoomParams)
                     EventType.STATE_ROOM_NAME -> handleRoomNameEvent(realm, event, createRoomParams)
                     EventType.STATE_ROOM_TOPIC -> handleRoomTopicEvent(realm, event, createRoomParams)
-                    EventType.STATE_ROOM_THIRD_PARTY_INVITE -> handleRoomThirdPartyInviteEvent(event, createRoomParams)
                     EventType.STATE_ROOM_JOIN_RULES -> handleRoomJoinRulesEvent(realm, event, createRoomParams)
                     else -> createRoomParams
                 }
@@ -158,13 +153,6 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTask @Inject constructor(
         topic = content.topic
     }
 
-    private fun handleRoomThirdPartyInviteEvent(event: CurrentStateEventEntity, params: CreateRoomParams): CreateRoomParams = params.apply {
-        when {
-            event.stateKey.isEmail() -> invite3pids.add(ThreePid.Email(event.stateKey))
-            event.stateKey.isMsisdn() -> invite3pids.add(ThreePid.Msisdn(event.stateKey))
-        }
-    }
-
     private fun handleRoomJoinRulesEvent(realm: Realm, event: CurrentStateEventEntity, params: CreateRoomParams): CreateRoomParams = params.apply {
         val content = getEventContent<RoomJoinRulesContent>(realm, event.eventId) ?: return@apply
         preset = when {
@@ -182,22 +170,5 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTask @Inject constructor(
 
     private inline fun <reified T> getEventContent(realm: Realm, eventId: String): T? {
         return EventEntity.where(realm, eventId).findFirst()?.asDomain()?.getClearContent().toModel<T>()
-    }
-
-    /**
-     * Check if a CharSequence is an email.
-     */
-    private fun CharSequence.isEmail() = Patterns.EMAIL_ADDRESS.matcher(this).matches()
-
-    /**
-     * Check if a CharSequence is a phone number.
-     */
-    private fun CharSequence.isMsisdn(): Boolean {
-        return try {
-            PhoneNumberUtil.getInstance().parse(ensurePrefix("+"), null)
-            true
-        } catch (e: NumberParseException) {
-            false
-        }
     }
 }
