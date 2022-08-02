@@ -68,9 +68,6 @@ import java.util.UUID
 private const val A_LOCAL_ROOM_ID = "a-local-room-id"
 private const val MY_USER_ID = "my-user-id"
 
-private const val A_DISPLAY_NAME = "display-name"
-private const val AN_AVATAR_URL = "avatar-url"
-
 @ExperimentalCoroutinesApi
 internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
 
@@ -397,8 +394,6 @@ internal class DefaultGetCreateRoomParamsFromLocalRoomTaskTest {
                 stateKey = userId,
                 content = RoomMemberContent(
                         membership = membership,
-                        displayName = "${userId}_$A_DISPLAY_NAME",
-                        avatarUrl = "${userId}_$AN_AVATAR_URL",
                         isDirect = isDirect
                 ).toContent()
         )
