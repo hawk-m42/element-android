@@ -48,7 +48,11 @@ class FlowTestObserver<T>(
     }
 
     fun assertLatestValue(value: T) {
-        assertTrue(values.last() == value)
+        assertEquals(values.last(), value)
+    }
+
+    fun assertPredicateLatestValue(predicate: (T) -> Boolean) {
+        assertTrue(predicate(values.last()))
     }
 
     fun assertValues(values: List<T>): FlowTestObserver<T> {

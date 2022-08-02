@@ -91,6 +91,11 @@ class ViewModelTest<S, VE>(
         return this
     }
 
+    fun assertPredicateLatestState(predicate: (S) -> Boolean): ViewModelTest<S, VE> {
+        states.assertPredicateLatestValue(predicate)
+        return this
+    }
+
     fun finish() {
         states.finish()
         viewEvents.finish()
