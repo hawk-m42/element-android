@@ -198,6 +198,10 @@ class RoomSettingsFragment @Inject constructor(
         viewModel.handle(RoomSettingsAction.SetRoomGuestAccess(toggled))
     }
 
+    override fun setEncryptedToVerifiedDevicesOnly(enabled: Boolean) {
+        viewModel.handle(RoomSettingsAction.SetEncryptToVerifiedDeviceOnly(enabled))
+    }
+
     override fun onImageReady(uri: Uri?) {
         uri ?: return
         viewModel.handle(

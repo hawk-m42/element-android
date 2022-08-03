@@ -41,6 +41,7 @@ import org.matrix.android.sdk.api.session.events.model.Content
 import org.matrix.android.sdk.api.session.events.model.Event
 import org.matrix.android.sdk.api.session.events.model.content.RoomKeyWithHeldContent
 import org.matrix.android.sdk.internal.crypto.model.SessionInfo
+import org.matrix.android.sdk.api.session.crypto.GlobalCryptoConfig
 
 interface CryptoService {
 
@@ -60,6 +61,8 @@ interface CryptoService {
 
     fun isRoomBlacklistUnverifiedDevices(roomId: String?): Boolean
 
+    fun getLiveBlacklistUnverifiedDevices(roomId: String): LiveData<Boolean>
+
     fun setWarnOnUnknownDevices(warn: Boolean)
 
     fun setDeviceVerification(trustLevel: DeviceTrustLevel, userId: String, deviceId: String)
@@ -75,6 +78,8 @@ interface CryptoService {
     fun getGlobalBlacklistUnverifiedDevices(): Boolean
 
     fun setGlobalBlacklistUnverifiedDevices(block: Boolean)
+
+    fun getLiveGlobalCryptoConfig(): LiveData<GlobalCryptoConfig>
 
     /**
      * Enable or disable key gossiping.
@@ -111,7 +116,7 @@ interface CryptoService {
 
     suspend fun exportRoomKeys(password: String): ByteArray
 
-    fun setRoomBlacklistUnverifiedDevices(roomId: String)
+    fun setRoomBlacklistUnverifiedDevices(roomId: String, enable: Boolean)
 
     fun getDeviceInfo(userId: String, deviceId: String?): CryptoDeviceInfo?
 
